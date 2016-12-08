@@ -5,15 +5,16 @@ var chai = require('chai'),
   lib = execlib.lib,
   q = lib.q,
   qlib = lib.qlib,
-  BankSet,
+  BankSet = require('../')(execlib),
+  Bank,
   _banknames = ['001', '002', '003'],
   _usernames = ['peter', 'paul', 'mary'];
  
 chai.use(chap);
 expect = chai.expect;
 
-function banksetsetter(bankset) {
-  BankSet = bankset;
+function ctorsetter(banklib) {
+  Bank = banklib.Bank;
   return q(true);
 }
 
@@ -34,7 +35,7 @@ function popper1 () {
 }
 
 function itemprinter (item) {
-  console.log('item', item);
+  //console.log('item', item);
 }
 
 function accountfiller (bankset, bankname, accountname) {
@@ -105,8 +106,7 @@ describe('Basic tests', function () {
     return {pop:1, should_expand: [r[0], r[1]]};
   }
   it('Load library', function () {
-    var ll = require('../')(execlib);
-    return ll('allex:leveldbbank:lib').then(banksetsetter);
+    return execlib.loadDependencies('client', ['allex:leveldbbank:lib'], ctorsetter);
   });
   it('new BankSet has to throw if no prophash given', function () {
     expect(function (){new BankSet()}).to.throw(/hash in its ctor/);
@@ -116,7 +116,8 @@ describe('Basic tests', function () {
   });
   it('Instantiate BankSet', function () {
     _bankset = new BankSet({
-      path: 'bankset.db'
+      path: 'bankset.db',
+      bankctor: Bank
     });
   });
   it('Read accounts with default', function () {
@@ -158,6 +159,15 @@ describe('Basic tests', function () {
   });
   it('Read accounts', function () {
     expect(applytobankset(_bankset, ['readAccount'])).to.eventually.deep.equal(all(700));
+  });
+  it('Reserve 300 on accounts', function () {
+    return applytobankset(_bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
+  });
+  it('Partially commit 100 on accounts', function () {
+    return applytobankset(_bankset, ['partiallyCommitReservation', {_evaluate: reservation4use}, 100, ['cancel']]).then(reservationsetter);
+  });
+  it('Read accounts', function () {
+    expect(applytobankset(_bankset, ['readAccount'])).to.eventually.deep.equal(all(600));
   });
   it('Traverse storage', function () {
     return (applytobankset(_bankset, ['traverseKVStorage', {pop:1, _value: itemprinter}, {}]));
