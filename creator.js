@@ -183,7 +183,8 @@ function createBankSet (execlib) {
       'cancelReservation',
       'traverseKVStorage',
       'traverseLog',
-      'traverseReservations'
+      'traverseReservations',
+      'traverseResets'
     );
   };
 
