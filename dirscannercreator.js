@@ -55,7 +55,11 @@ function createDirScanner (execlib) {
 
   function scanDir (path) {
     var d = q.defer();
-    qlib.promise2defer(qlib.promise2decision(isDir(path), decideOnReallyDir.bind(null, path)), d);
+    qlib.promise2decision(isDir(path), decideOnReallyDir.bind(null, path)).then(
+      d.resolve.bind(d),
+      d.resolve.bind(d, false),
+      d.notify.bind(d)
+    );
     return d.promise;
   }
 
