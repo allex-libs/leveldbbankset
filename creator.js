@@ -4,9 +4,13 @@ function createBankSet (execlib) {
   'use strict';
 
   var lib = execlib.lib,
-    q = lib.q;
+    q = lib.q,
+    qlib = lib.qlib,
+    dirScanner = require('./dirscannercreator')(execlib);
+
 
   function BankSet (prophash) {
+    var sd, subbanks;
     if (!(prophash)) {
       throw new lib.Error('NO_PROPHASH', 'BankSet needs a property hash in its ctor');
     }
@@ -14,12 +18,25 @@ function createBankSet (execlib) {
       throw new lib.JSONizingError('NO_PATH', 'Property hash for BankSet has to have a path');
     }
     this.path = prophash.path;
-    this.bankctor = lib.isFunction(prophash.bankctor) ? prophash.bankctor : null;
+    this.bankctor = null; //lib.isFunction(prophash.bankctor) ? prophash.bankctor : null;
     this.bankprophash = prophash.bankprophash || {};
-    this.banks = new DIContainer();
+    this.banks = new lib.DIContainer();
+    this.newBank = new lib.HookCollection();
+    this.startDefer = prophash.starteddefer;
+    if (lib.isFunction(prophash.bankctor)) {
+      this.setBankCtor(prophash.bankctor);
+    }
   }
 
   BankSet.prototype.destroy = function () {
+    if (this.startDefer) {
+      this.startDefer.reject(new lib.Error('DYING', 'BankSet is destroying'));
+    }
+    this.startDefer = null;
+    if (this.newBank) {
+      this.newBank.destroy();
+    }
+    this.newBank = null;
     if (this.banks) {
       this.banks.destroy();
     }
@@ -30,11 +47,37 @@ function createBankSet (execlib) {
   };
 
   BankSet.prototype.setBankCtor = function (bankctor) {
+    var subbanks = [], sd = this.startDefer;
     this.bankctor = bankctor;
+    this.startDefer = null;
+    if (sd) {
+      dirScanner(this.path).then(
+        this.onDirScanned.bind(this, sd, subbanks),
+        sd ? sd.reject.bind(sd) : null,
+        subbanks.push.bind(subbanks)
+      );
+    }
+  };
+
+  BankSet.prototype.onDirScanned = function (sd, subbanks) {
+    var p;
+    if (!lib.isArray(subbanks)) {
+      if (sd) {
+        sd.resolve(this);
+      }
+    } else {
+      p = q.all(subbanks.map(this.getOrCreateBank.bind(this)));
+      if (sd) {
+        p.then(
+          sd.resolve.bind(sd, this),
+          sd.reject.bind(sd)
+        );
+      }
+    }
   };
 
   BankSet.prototype.getOrCreateBank = function (bankname) {
-    var ret = this.banks.get(bankname), sd, bs, ph;
+    var ret = this.banks.get(bankname), sd, bs, nb, ph;
     if (ret) {
       return q(ret);
     }
@@ -44,6 +87,7 @@ function createBankSet (execlib) {
     if (!this.banks.busy(bankname)) {
       sd = q.defer();
       bs = this.banks;
+      nb = this.newBank;
       ph = lib.extend({}, this.bankprophash, {
         path: Path.join(this.path, bankname)
       });
@@ -53,6 +97,8 @@ function createBankSet (execlib) {
         bs.register(bankname, b);
         bs = null;
         bankname = null;
+        nb.fire(b);
+        nb = null;
       },function (reason) {
         bs = null;
         username = null;
@@ -171,6 +217,7 @@ function createBankSet (execlib) {
   BankSet.addMethods = function (klass) {
     lib.inheritMethods(klass, BankSet,
       'setBankCtor',
+      'onDirScanned',
       'getOrCreateBank',
       'readAccount',
       'readAccountWDefault',

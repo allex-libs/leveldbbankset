@@ -1,17 +1,7 @@
-var chai = require('chai'),
-  chap = require('chai-as-promised'),
-  expect,
-  execlib = require('allex'),
-  lib = execlib.lib,
-  q = lib.q,
-  qlib = lib.qlib,
-  BankSet = require('../')(execlib),
-  Bank,
-  _banknames = ['001', '002', '003'],
+var _banknames = ['001', '002', '003'],
   _usernames = ['peter', 'paul', 'mary'];
  
-chai.use(chap);
-expect = chai.expect;
+loadMochaIntegration('allex_leveldblib');
 
 function ctorsetter(banklib) {
   Bank = banklib.Bank;
@@ -95,8 +85,12 @@ function applytobankset (bankset, args) {
   return q.all(_banknames.map(bankapplier.bind(null, bankset, args)));
 }
 
+function filler001 (key, value) {
+  States001[key[1]] = value;
+}
+
 describe('Basic tests', function () {
-  var _bankset, _reservations;
+  var _reservations;
   function reservationsetter(reservations) {
     _reservations = reservations;
     return q(reservations);
@@ -105,8 +99,20 @@ describe('Basic tests', function () {
     var r = _reservations[banknameindex][accountnameindex];
     return {pop:1, should_expand: [r[0], r[1]]};
   }
+  /*
   it('Load library', function () {
     return execlib.loadDependencies('client', ['allex:leveldbbank:lib'], ctorsetter);
+  });
+  */
+  loadClientSide(['allex:leveldbbankset:lib', 'allex:leveldbbank:lib', 'allex:leveldb:lib']);
+  it('Set internal variables', function () {
+    return setGlobal('BankSet', leveldbbanksetlib.BankSet).then(
+      setGlobal.bind(null, 'States001', {})
+    ).then(
+      setGlobal.bind(null, 'BankSetHook', leveldbbanksetlib.Hook)
+    ).then(
+      setGlobal.bind(null, 'Bank', leveldbbanklib.Bank)
+    );
   });
   it('new BankSet has to throw if no prophash given', function () {
     expect(function (){new BankSet()}).to.throw(/hash in its ctor/);
@@ -115,71 +121,96 @@ describe('Basic tests', function () {
     expect(function (){new BankSet({})}).to.throw(/has to have a path/);
   });
   it('Instantiate BankSet', function () {
-    _bankset = new BankSet({
+    var d = q.defer(), p = d.promise;
+    new BankSet({
       path: 'bankset.db',
-      bankctor: Bank
-    });
+      bankctor: Bank,
+      starteddefer: d
+    })
+    return setGlobal('bankset', p);
   });
   it('Read accounts with default', function () {
     this.timeout(150000);
-    return applytobankset(_bankset, ['readAccountWDefault', 0]);
+    return applytobankset(bankset, ['readAccountWDefault', 0]);
   });
   it('Read accounts safe', function () {
-    return applytobankset(_bankset, ['readAccountSafe', 0]);
+    return applytobankset(bankset, ['readAccountSafe', 0]);
   });
   it('Fill some accounts with random money', function () {
-    return applytobankset(_bankset, ['charge', {_evaluate: randomAmount.bind(null, -2000, -1000)}, ['fill']]);
+    return applytobankset(bankset, ['charge', {_evaluate: randomAmount.bind(null, -2000, -1000)}, ['fill']]);
   });
   it('Close accounts', function () {
-    return applytobankset(_bankset, ['closeAccount']);
+    return applytobankset(bankset, ['closeAccount']);
   });
   it('Read non-existing accounts should throw', function () {
-    expect(applytobankset(_bankset, ['readAccount'])).to.be.rejectedWith(/not found in database/);
+    expect(applytobankset(bankset, ['readAccount'])).to.be.rejectedWith(/not found in database/);
   });
   it('Read accounts safe', function () {
-    return applytobankset(_bankset, ['readAccountSafe', 0]);
+    return applytobankset(bankset, ['readAccountSafe', 0]);
   });
   it('Fill some accounts with 1000', function () {
-    return applytobankset(_bankset, ['charge', -1000, ['fill']]);
+    return applytobankset(bankset, ['charge', -1000, ['fill']]);
   });
   it('Reserve 300 on accounts', function () {
-    return applytobankset(_bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
+    return applytobankset(bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
   });
   it('Commit reservations on accounts', function () {
-    return applytobankset(_bankset, ['commitReservation', {_evaluate: reservation4use}, ['commit']]).then(reservationsetter);
+    return applytobankset(bankset, ['commitReservation', {_evaluate: reservation4use}, ['commit']]).then(reservationsetter);
   });
   it('Read accounts', function () {
-    expect(applytobankset(_bankset, ['readAccount'])).to.eventually.deep.equal(all(700));
+    expect(applytobankset(bankset, ['readAccount'])).to.eventually.deep.equal(all(700));
   });
   it('Reserve 300 on accounts', function () {
-    return applytobankset(_bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
+    return applytobankset(bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
   });
   it('Cancel reservations on accounts', function () {
-    return applytobankset(_bankset, ['cancelReservation', {_evaluate: reservation4use}, ['cancel']]).then(reservationsetter);
+    return applytobankset(bankset, ['cancelReservation', {_evaluate: reservation4use}, ['cancel']]).then(reservationsetter);
   });
   it('Read accounts', function () {
-    expect(applytobankset(_bankset, ['readAccount'])).to.eventually.deep.equal(all(700));
+    expect(applytobankset(bankset, ['readAccount'])).to.eventually.deep.equal(all(700));
   });
   it('Reserve 300 on accounts', function () {
-    return applytobankset(_bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
+    return applytobankset(bankset, ['reserve', 300, ['reserve']]).then(reservationsetter);
   });
   it('Partially commit 100 on accounts', function () {
-    return applytobankset(_bankset, ['partiallyCommitReservation', {_evaluate: reservation4use}, 100, ['cancel']]).then(reservationsetter);
+    return applytobankset(bankset, ['partiallyCommitReservation', {_evaluate: reservation4use}, 100, ['cancel']]).then(reservationsetter);
   });
   it('Read accounts', function () {
-    expect(applytobankset(_bankset, ['readAccount'])).to.eventually.deep.equal(all(600));
+    expect(applytobankset(bankset, ['readAccount'])).to.eventually.deep.equal(all(600));
   });
   it('Traverse storage', function () {
-    return (applytobankset(_bankset, ['traverseKVStorage', {pop:1, _value: itemprinter}, {}]));
+    return (applytobankset(bankset, ['traverseKVStorage', {pop:1, _value: itemprinter}, {}]));
   });
   it('Traverse log', function () {
-    return (applytobankset(_bankset, ['traverseLog', {pop:1, _value: itemprinter}, {}]));
+    return (applytobankset(bankset, ['traverseLog', {pop:1, _value: itemprinter}, {}]));
   });
   it('Traverse reservations', function () {
-    return (applytobankset(_bankset, ['traverseReservations', {pop:1, _value: itemprinter}, {}]));
+    return (applytobankset(bankset, ['traverseReservations', {pop:1, _value: itemprinter}, {}]));
   });
   it('Traverse resets', function () {
-    return (applytobankset(_bankset, ['traverseResets', {pop:1, _value: itemprinter}, {}]));
+    return (applytobankset(bankset, ['traverseResets', {pop:1, _value: itemprinter}, {}]));
+  });
+  createLevelDBHookIt({
+    ctor: 'BankSetHook',
+    instancename: 'Hook001',
+    leveldb: 'bankset',
+    hookTo: {keys: ['001', '***'], scan: true},
+    cb: filler001
+  });
+  createLevelDBHookIt({
+    ctor: 'BankSetHook',
+    instancename: 'HookPeter',
+    leveldb: 'bankset',
+    hookTo: {keys: ['***', 'peter'], scan: true},
+    cb: console.log.bind(console, 'peter:')
+  });
+  it('Write and expect Hook001 to get it', function () {
+    var ret001 = Hook001.wait(), retpeter = HookPeter.wait();
+    bankset.charge('001', 'peter', -100, ['test charge']);
+    return Promise.all([
+      expect(ret001).to.eventually.deep.equal([['001','peter'], States001['peter']+100]),
+      expect(retpeter).to.eventually.deep.equal([['001', 'peter'], States001['peter']+100])
+    ]);
   });
 });
 
