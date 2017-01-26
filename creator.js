@@ -77,7 +77,13 @@ function createBankSet (execlib) {
   };
 
   BankSet.prototype.getOrCreateBank = function (bankname) {
-    var ret = this.banks.get(bankname), sd, bs, nb, ph;
+    var ret = this.banks.get(bankname), sd, bs, nb, ph, bn;
+    if (bankname === '***') {
+      console.trace();
+      console.log('bankname', bankname);
+      process.exit(1);
+      return;
+    }
     if (ret) {
       return q(ret);
     }
@@ -92,16 +98,19 @@ function createBankSet (execlib) {
         path: Path.join(this.path, bankname)
       });
       ph.starteddefer = sd;
+      bn = bankname;
       new this.bankctor(ph);
       sd.promise.then(function (b) {
-        bs.register(bankname, b);
+        bs.register(bn, b);
         bs = null;
-        bankname = null;
-        nb.fire(b);
+        nb.fire(b, bn);
         nb = null;
+        bn = null;
       },function (reason) {
         bs = null;
         username = null;
+        nb = null;
+        bn = null;
       });
     }
     ret = this.banks.waitFor(bankname);

@@ -204,6 +204,19 @@ describe('Basic tests', function () {
     hookTo: {keys: ['***', 'peter'], scan: true},
     cb: console.log.bind(console, 'peter:')
   });
+  createLevelDBHookIt({
+    ctor: 'BankSetHook',
+    instancename: 'HookFilter',
+    leveldb: 'bankset',
+    hookToLog: {keys: ['***', {filter: {
+      values: {
+        op: 'eq',
+        field: 1,
+        value: 100
+      }
+    }}], scan: true},
+    cb: console.log.bind(console, 'peter filter:')
+  });
   it('Write and expect Hook001 to get it', function () {
     var ret001 = Hook001.wait(), retpeter = HookPeter.wait();
     bankset.charge('001', 'peter', -100, ['test charge']);
