@@ -18,9 +18,5 @@
     "lib"
   ],
   "author": "HERS Belgrade",
-  "license": "ISC",
-  "devDependencies": {
-    "chai": "3.x",
-    "chai-as-promised": "6.x"
-  }
+  "license": "ISC"
 }

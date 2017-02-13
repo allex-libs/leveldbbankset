@@ -108,7 +108,6 @@ function createBankSet (execlib) {
         bn = null;
       },function (reason) {
         bs = null;
-        username = null;
         nb = null;
         bn = null;
       });
@@ -120,6 +119,7 @@ function createBankSet (execlib) {
   function bankapplier (methodname, args, bank) {
     var method = bank[methodname], ret;
     if (!lib.isFunction(method)) {
+      console.log(methodname+' is not a method of Bank');
       return q.reject(new lib.Error('INVALID_METHODNAME', methodname+' is not a method of Bank'));
     }
     ret = method.apply(bank, args);
@@ -223,6 +223,8 @@ function createBankSet (execlib) {
     );
   };
 
+  require('./queryextensioncreator')(execlib, BankSet, bankapplier);
+
   BankSet.addMethods = function (klass) {
     lib.inheritMethods(klass, BankSet,
       'setBankCtor',
@@ -240,7 +242,9 @@ function createBankSet (execlib) {
       'traverseKVStorage',
       'traverseLog',
       'traverseReservations',
-      'traverseResets'
+      'traverseResets',
+      'query',
+      'queryLog'
     );
   };
 

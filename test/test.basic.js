@@ -85,7 +85,9 @@ function applytobankset (bankset, args) {
   return q.all(_banknames.map(bankapplier.bind(null, bankset, args)));
 }
 
-function filler001 (key, value) {
+function filler001 (kva) {
+  var key = kva[0], value = kva[1];
+  console.log('filler001', key, value);
   States001[key[1]] = value;
 }
 
@@ -108,8 +110,6 @@ describe('Basic tests', function () {
   it('Set internal variables', function () {
     return setGlobal('BankSet', leveldbbanksetlib.BankSet).then(
       setGlobal.bind(null, 'States001', {})
-    ).then(
-      setGlobal.bind(null, 'BankSetHook', leveldbbanksetlib.Hook)
     ).then(
       setGlobal.bind(null, 'Bank', leveldbbanklib.Bank)
     );
@@ -190,39 +190,66 @@ describe('Basic tests', function () {
   it('Traverse resets', function () {
     return (applytobankset(bankset, ['traverseResets', {pop:1, _value: itemprinter}, {}]));
   });
-  createLevelDBHookIt({
-    ctor: 'BankSetHook',
-    instancename: 'Hook001',
+  createLevelDBQueryIt({
+    instancename: 'Query001',
     leveldb: 'bankset',
-    hookTo: {keys: ['001', '***'], scan: true},
+    filter: {bankname: '001'},
     cb: filler001
   });
-  createLevelDBHookIt({
-    ctor: 'BankSetHook',
-    instancename: 'HookPeter',
+  createLevelDBQueryIt({
+    instancename: 'QueryPeter',
     leveldb: 'bankset',
-    hookTo: {keys: ['***', 'peter'], scan: true},
-    cb: console.log.bind(console, 'peter:')
+    filter: {bankname: '001', keys: {op: 'eq', field: null, value: 'peter'}}
   });
-  createLevelDBHookIt({
-    ctor: 'BankSetHook',
-    instancename: 'HookFilter',
+  createLevelDBQueryIt({
+    instancename: 'QueryFilter',
     leveldb: 'bankset',
-    hookToLog: {keys: ['***', {filter: {
+    filter: {
       values: {
         op: 'eq',
         field: 1,
         value: 100
       }
-    }}], scan: true},
+    },
     cb: console.log.bind(console, 'peter filter:')
   });
-  it('Write and expect Hook001 to get it', function () {
-    var ret001 = Hook001.wait(), retpeter = HookPeter.wait();
+  createLevelDBQueryIt({
+    instancename: 'Query12',
+    leveldb: 'bankset',
+    filter: {
+      bankname: ['001', '002']
+    },
+    cb: console.log.bind(console, '001002 filter:')
+  });
+  createLevelDBQueryIt({
+    instancename: 'QueryLogPeter',
+    leveldb: 'bankset',
+    queryMethodName: 'queryLog',
+    filter: {
+      bankname: ['001', '002'],
+      values: {
+        op: 'eq',
+        field: 0,
+        value: 'peter'
+      }
+    },
+    cb: function (kva) {
+      if (!(kva && kva.length && kva.length>1 && kva[1] && kva[1].length && kva[1][0] === 'peter')) {
+        console.error('this is not good', kva);
+        process.exit(1);
+      }
+    }
+  });
+  it('Write and expect Query001 to get it', function () {
+    var ret001 = Query001.wait(), retpeter = QueryPeter.wait(), ret12 = Query12.wait();
     bankset.charge('001', 'peter', -100, ['test charge']);
+    qlib.promise2console(ret001, 'ret001');
+    qlib.promise2console(retpeter, 'retpeter');
+    qlib.promise2console(ret12, 'ret12');
     return Promise.all([
       expect(ret001).to.eventually.deep.equal([['001','peter'], States001['peter']+100]),
-      expect(retpeter).to.eventually.deep.equal([['001', 'peter'], States001['peter']+100])
+      expect(retpeter).to.eventually.deep.equal([['001', 'peter'], States001['peter']+100]),
+      expect(ret12).to.eventually.deep.equal([['001', 'peter'], States001['peter']+100])
     ]);
   });
 });
