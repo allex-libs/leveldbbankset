@@ -6,6 +6,9 @@ function createQueryExtension (execlib, BankSet, bankapplier) {
     qlib = lib.qlib;
 
   function queryaugmenter (bankname, defer, kva) {
+    if (bankname === '004') {
+      console.log('now what?', kva);
+    }
     var key, mykva, i;
     if (!lib.isArray(kva)) {
       return;
@@ -23,21 +26,29 @@ function createQueryExtension (execlib, BankSet, bankapplier) {
     defer.notify(mykva);
   }
 
+  function allQuerierForBankReal (methodname, filterdesc, mystarteddefer, defer, localdefer, bank, bankname) {
+    var d = localdefer || q.defer();
+    d.promise.then(null, null, queryaugmenter.bind(null, bankname, defer));
+    bank[methodname](filterdesc, d, mystarteddefer);
+  }
+
   function allQuerierForBank (methodname, ps, sps, filterdesc, defer, starteddefer, bank, bankname) {
     var d = q.defer(), mystarteddefer;
     if (starteddefer) {
       mystarteddefer = q.defer();
-      qlib.promise2defer(mystarteddefer.promise, starteddefer);
+      //qlib.promise2defer(mystarteddefer.promise, starteddefer);
       sps.push(mystarteddefer.promise);
     }
-    d.promise.then(null, null, queryaugmenter.bind(null, bankname, defer));
     ps.push(d.promise);
-    bank[methodname](filterdesc, d, mystarteddefer);
+    allQuerierForBankReal(methodname, filterdesc, mystarteddefer, defer, d, bank, bankname);
   }
 
   function queryAll(methodname, bs, filterdesc, defer, starteddefer) {
-    var ps = [], sps = [];
+    var ps = [], sps = [], listener, listenerdestroyer;
     bs.banks.traverse(allQuerierForBank.bind(null, methodname, ps, sps, filterdesc, defer, starteddefer));
+    listener = bs.newBank.attach(allQuerierForBankReal.bind(null, methodname, filterdesc, null, defer, null)); 
+    listenerdestroyer = listener.destroy.bind(listener);
+    defer.promise.then(listenerdestroyer, listenerdestroyer);
     qlib.promise2defer(q.all(ps), defer);
     if (starteddefer) {
       qlib.promise2defer(q.all(sps), starteddefer);

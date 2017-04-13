@@ -207,7 +207,7 @@ describe('Basic tests', function () {
     filter: {
       values: {
         op: 'eq',
-        field: 1,
+        field: null,
         value: 100
       }
     },
@@ -251,6 +251,12 @@ describe('Basic tests', function () {
       expect(retpeter).to.eventually.deep.equal([['001', 'peter'], States001['peter']+100]),
       expect(ret12).to.eventually.deep.equal([['001', 'peter'], States001['peter']+100])
     ]);
+  });
+  it('Write to a new bank and expect QueryFilter to get it', function () {
+    var ret = QueryFilter.wait();
+    bankset.charge('004', 'peter', -100, ['test charge']);
+    qlib.promise2console(ret, 'ret');
+    return expect(ret).to.eventually.deep.equal([['004','peter'], 100]);
   });
 });
 
