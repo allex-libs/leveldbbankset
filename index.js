@@ -1,6 +1,6 @@
 function createBankSet (execlib) {
   //return require('./creator')(execlib);
-  return execlib.loadDependencies('client', ['allex:leveldb:lib', 'allex:leveldbbank:lib'], createLib.bind(null, execlib));
+  return execlib.loadDependencies('client', ['allex_leveldblib', 'allex_leveldbbanklib'], createLib.bind(null, execlib));
 }
 
 function createLib (execlib, leveldblib, banklib) {

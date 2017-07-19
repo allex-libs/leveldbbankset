@@ -103,10 +103,10 @@ describe('Basic tests', function () {
   }
   /*
   it('Load library', function () {
-    return execlib.loadDependencies('client', ['allex:leveldbbank:lib'], ctorsetter);
+    return execlib.loadDependencies('client', ['allex_leveldbbanklib'], ctorsetter);
   });
   */
-  loadClientSide(['allex:leveldbbankset:lib', 'allex:leveldbbank:lib', 'allex:leveldb:lib']);
+  loadClientSide(['allex_leveldbbanksetlib', 'allex_leveldbbanklib', 'allex_leveldblib']);
   it('Set internal variables', function () {
     return setGlobal('BankSet', leveldbbanksetlib.BankSet).then(
       setGlobal.bind(null, 'States001', {})
