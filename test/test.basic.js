@@ -108,10 +108,10 @@ describe('Basic tests', function () {
   */
   loadClientSide(['allex_leveldbbanksetlib', 'allex_leveldbbanklib', 'allex_leveldblib']);
   it('Set internal variables', function () {
-    return setGlobal('BankSet', leveldbbanksetlib.BankSet).then(
+    return setGlobal('BankSet', allex_leveldbbanksetlib.BankSet).then(
       setGlobal.bind(null, 'States001', {})
     ).then(
-      setGlobal.bind(null, 'Bank', leveldbbanklib.Bank)
+      setGlobal.bind(null, 'Bank', allex_leveldbbanklib.Bank)
     );
   });
   it('new BankSet has to throw if no prophash given', function () {
